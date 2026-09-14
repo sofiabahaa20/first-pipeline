@@ -9,12 +9,6 @@ pipeline {
         )
     }
 
-    environment {
-        AWS_ACCESS_KEY_ID     = 'test'
-        AWS_SECRET_ACCESS_KEY = 'test'
-        AWS_DEFAULT_REGION    = 'us-east-1'
-    }
-
     stages {
         stage('Checkout Code') {
             steps {
@@ -24,21 +18,19 @@ pipeline {
 
         stage('Terraform Init') {
             steps {
-                echo "Simulating terraform init (network step skipped for demo)..."
-                sh 'terraform version'
+                sh 'terraform init'
             }
         }
 
         stage('Switch Workspace') {
             steps {
-                echo "Simulating workspace switch to: ${params.ENVIRONMENT}"
+                sh "terraform workspace select ${params.ENVIRONMENT} || terraform workspace new ${params.ENVIRONMENT}"
             }
         }
 
         stage('Terraform Plan') {
             steps {
-                echo "Simulating terraform plan for ${params.ENVIRONMENT}..."
-                echo "Plan: 3 to add, 0 to change, 0 to destroy. (simulated)"
+                sh "terraform plan -var-file=environments/${params.ENVIRONMENT}.tfvars -out=tfplan"
             }
         }
 
@@ -52,8 +44,7 @@ pipeline {
 
         stage('Terraform Apply') {
             steps {
-                echo "Simulating terraform apply for ${params.ENVIRONMENT}..."
-                echo "Apply complete! Resources: 3 added, 0 changed, 0 destroyed. (simulated)"
+                sh "terraform apply tfplan"
             }
         }
     }
