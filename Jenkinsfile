@@ -76,17 +76,17 @@ pipeline {
 
     post {
         success {
-            mail to: 'you@example.com',
+            mail to: 'sofiabahaa93@gmail.com',
                  subject: "SUCCESS: Terraform Apply - ${env.JOB_NAME} #${env.BUILD_NUMBER}",
                  body: "Terraform apply succeeded for environment: ${params.ENVIRONMENT}\n\nBuild: ${env.BUILD_URL}"
         }
         failure {
-            mail to: 'you@example.com',
+            mail to: 'sofiabahaa93@gmail.com',
                  subject: "FAILURE: Terraform - ${env.JOB_NAME} #${env.BUILD_NUMBER}",
                  body: "Terraform pipeline failed (or was aborted) for environment: ${params.ENVIRONMENT}\n\nCheck logs: ${env.BUILD_URL}console"
         }
         aborted {
-            mail to: 'you@example.com',
+            mail to: 'sofiabahaa93@gmail.com',
                  subject: "ABORTED: Terraform Apply - ${env.JOB_NAME} #${env.BUILD_NUMBER}",
                  body: "The apply approval was rejected/timed out for environment: ${params.ENVIRONMENT}."
         }
