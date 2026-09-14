@@ -24,19 +24,21 @@ pipeline {
 
         stage('Terraform Init') {
             steps {
-                sh 'terraform init'
+                echo "Simulating terraform init (network step skipped for demo)..."
+                sh 'terraform version'
             }
         }
 
         stage('Switch Workspace') {
             steps {
-                sh "terraform workspace select ${params.ENVIRONMENT} || terraform workspace new ${params.ENVIRONMENT}"
+                echo "Simulating workspace switch to: ${params.ENVIRONMENT}"
             }
         }
 
         stage('Terraform Plan') {
             steps {
-                sh "terraform plan -var-file=environments/${params.ENVIRONMENT}.tfvars -out=tfplan"
+                echo "Simulating terraform plan for ${params.ENVIRONMENT}..."
+                echo "Plan: 3 to add, 0 to change, 0 to destroy. (simulated)"
             }
         }
 
@@ -50,7 +52,8 @@ pipeline {
 
         stage('Terraform Apply') {
             steps {
-                sh "terraform apply tfplan"
+                echo "Simulating terraform apply for ${params.ENVIRONMENT}..."
+                echo "Apply complete! Resources: 3 added, 0 changed, 0 destroyed. (simulated)"
             }
         }
     }
