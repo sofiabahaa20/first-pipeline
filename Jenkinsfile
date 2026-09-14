@@ -5,71 +5,52 @@ pipeline {
         choice(
             name: 'ENVIRONMENT',
             choices: ['dev', 'stg', 'prod'],
-            description: 'Select which environment to deploy'
+            description: 'Select the target environment'
         )
     }
 
     environment {
-        AWS_ACCESS_KEY_ID     = credentials('aws-access-key-id')
-        AWS_SECRET_ACCESS_KEY = credentials('aws-secret-access-key')
-        TF_VAR_FILE           = "environments/${params.ENVIRONMENT}.tfvars"
-    }
-
-    // Configure the matching GitHub webhook in the repo settings
-    // (Settings > Webhooks > payload URL: http://<jenkins-url>/github-webhook/)
-    triggers {
-        githubPush()
+        AWS_ACCESS_KEY_ID     = 'test'
+        AWS_SECRET_ACCESS_KEY = 'test'
+        AWS_DEFAULT_REGION    = 'us-east-1'
     }
 
     stages {
-
-        stage('Checkout') {
+        stage('Checkout Code') {
             steps {
                 checkout scm
             }
         }
 
-        stage('Terraform Execution') {
-            stages {
+        stage('Terraform Init') {
+            steps {
+                sh 'terraform init'
+            }
+        }
 
-                stage('Terraform Init') {
-                    steps {
-                        sh 'terraform init -input=false'
-                    }
-                }
+        stage('Switch Workspace') {
+            steps {
+                sh "terraform workspace select ${params.ENVIRONMENT} || terraform workspace new ${params.ENVIRONMENT}"
+            }
+        }
 
-                stage('Workspace Select') {
-                    steps {
-                        sh """
-                            terraform workspace select ${params.ENVIRONMENT} || \
-                            terraform workspace new ${params.ENVIRONMENT}
-                        """
-                    }
-                }
+        stage('Terraform Plan') {
+            steps {
+                sh "terraform plan -var-file=environments/${params.ENVIRONMENT}.tfvars -out=tfplan"
+            }
+        }
 
-                stage('Plan') {
-                    steps {
-                        sh "terraform plan -var-file=${TF_VAR_FILE} -out=tfplan -input=false"
-                    }
+        stage('Manual Approval') {
+            steps {
+                timeout(time: 10, unit: 'MINUTES') {
+                    input message: "Apply changes for [${params.ENVIRONMENT}]?", ok: "Approve"
                 }
+            }
+        }
 
-                stage('Approve') {
-                    steps {
-                        script {
-                            input(
-                                id: 'ApplyApproval',
-                                message: "Approve Terraform apply for '${params.ENVIRONMENT}'?",
-                                ok: 'Approve'
-                            )
-                        }
-                    }
-                }
-
-                stage('Apply') {
-                    steps {
-                        sh 'terraform apply -input=false -auto-approve tfplan'
-                    }
-                }
+        stage('Terraform Apply') {
+            steps {
+                sh "terraform apply tfplan"
             }
         }
     }
@@ -77,18 +58,13 @@ pipeline {
     post {
         success {
             mail to: 'sofiabahaa93@gmail.com',
-                 subject: "SUCCESS: Terraform Apply - ${env.JOB_NAME} #${env.BUILD_NUMBER}",
-                 body: "Terraform apply succeeded for environment: ${params.ENVIRONMENT}\n\nBuild: ${env.BUILD_URL}"
+                 subject: "SUCCESS: ${env.JOB_NAME} #${env.BUILD_NUMBER}",
+                 body: "Pipeline succeeded for environment: ${params.ENVIRONMENT}\n${env.BUILD_URL}"
         }
         failure {
             mail to: 'sofiabahaa93@gmail.com',
-                 subject: "FAILURE: Terraform - ${env.JOB_NAME} #${env.BUILD_NUMBER}",
-                 body: "Terraform pipeline failed (or was aborted) for environment: ${params.ENVIRONMENT}\n\nCheck logs: ${env.BUILD_URL}console"
-        }
-        aborted {
-            mail to: 'sofiabahaa93@gmail.com',
-                 subject: "ABORTED: Terraform Apply - ${env.JOB_NAME} #${env.BUILD_NUMBER}",
-                 body: "The apply approval was rejected/timed out for environment: ${params.ENVIRONMENT}."
+                 subject: "FAILURE: ${env.JOB_NAME} #${env.BUILD_NUMBER}",
+                 body: "Pipeline failed for environment: ${params.ENVIRONMENT}\nCheck logs: ${env.BUILD_URL}console"
         }
     }
 }
